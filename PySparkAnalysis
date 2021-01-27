@@ -1,0 +1,174 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# # Your Name:
+# Ryan Gould
+# Christina Cota
+
+# In[1]:
+
+
+import findspark
+findspark.init()
+import pyspark
+import pyspark.sql.functions as f
+import matplotlib.pyplot as plt
+from pyspark.sql import SparkSession
+import pandas as pd
+import numpy as np
+
+
+# In[3]:
+
+
+# create entry points to spark
+
+spark = SparkSession     .builder     .appName("finalProject")     .getOrCreate()
+
+
+# In[4]:
+
+
+#read the data
+df = spark.read.csv("crime_data.csv")
+df = df.withColumnRenamed("_c0","IncidentNumber").withColumnRenamed("_c1","OffenseCode").withColumnRenamed("_c2","OffenseCodeGroup").withColumnRenamed("_c3","OffenseDescription").withColumnRenamed("_c4","District").withColumnRenamed("_c5","ReportingArea").withColumnRenamed("_c6","Shooting").withColumnRenamed("_c7","OccuredOnDate").withColumnRenamed("_c8","Year").withColumnRenamed("_c9","Month").withColumnRenamed("_c10","DayOfWeek").withColumnRenamed("_c11","Hour").withColumnRenamed("_c12","UCR_PART").withColumnRenamed("_c13","Street").withColumnRenamed("_c14","Lat").withColumnRenamed("_c15","Long").withColumnRenamed("_c16","Location")
+df = df.filter(df.IncidentNumber != "INCIDENT_NUMBER")
+df = df.filter(df.IncidentNumber != "TESTTEST2")
+    
+df.show()
+
+
+# In[5]:
+
+
+nonNullDf = df.filter(df.Street.isNotNull())
+nonNullDf.show()
+nonNullDf2 = df.filter(df.District.isNotNull())
+
+
+# In[6]:
+
+
+nonNullDf2 = nonNullDf2.filter(df.OffenseDescription != "SICK ASSIST")
+df_districts = (
+  df
+  .groupBy("OffenseDescription")
+).count().alias('descriptions')
+df_districts.orderBy(f.desc('count')).show()
+
+
+# In[7]:
+
+
+df_crimes = (
+  nonNullDf2
+  .groupBy("District")
+).count().alias('descriptions')
+df_districts.orderBy(f.desc('count')).show()
+
+
+# In[8]:
+
+
+df1 = nonNullDf.where(f.col("OffenseDescription") == "ROBBERY - STREET")
+streetRobbery = df1.groupBy("Street").agg(f.count("OffenseDescription")).orderBy(f.desc("count(OffenseDescription)"))
+
+
+
+# In[9]:
+
+
+pdSR = streetRobbery.toPandas()
+top5 = pdSR[0:5]
+top5
+
+
+# In[10]:
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.bar(top5['Street'],top5['count(OffenseDescription)'], width = .2)
+plt.show()
+
+
+# In[12]:
+
+
+df2 = df1.groupBy("Hour").agg(f.count("OffenseDescription")).orderBy(f.desc("count(OffenseDescription)"))
+pdHR = df2.toPandas()
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.bar(pdHR['Hour'],pdHR['count(OffenseDescription)'])
+plt.show()
+
+
+# In[13]:
+
+
+df3 = df.where(f.col("OffenseDescription") == "SEX OFFENSE - RAPE -  OTHER")
+sexualAssault = df3.groupBy("District").agg(f.count("OffenseDescription")).orderBy(f.desc("count(OffenseDescription)"))
+nonNullDf = sexualAssault.filter(df.District.isNotNull())
+pdSX = nonNullDf.toPandas()
+
+
+# In[14]:
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.bar(pdSX['District'].astype(str), pdSX['count(OffenseDescription)'])
+plt.show()
+
+
+# In[15]:
+
+
+df4 = df3.groupBy("Hour").agg(f.count("OffenseDescription")).orderBy(f.desc("count(OffenseDescription)"))
+timeSX = df4.filter(df.Hour.isNotNull())
+pdTSX = timeSX.toPandas()
+
+
+# In[16]:
+
+
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.bar(pdTSX['Hour'].astype(str), pdTSX['count(OffenseDescription)'])
+plt.show()
+
+
+# In[17]:
+
+
+df5 = nonNullDf2.where(f.col("OffenseDescription") == "BURGLARY - RESIDENTIAL - ATTEMPT")
+burg = df5.filter(df.Street.isNotNull())
+burg = df5.groupBy("Street").agg(f.count("OffenseDescription")).orderBy(f.desc("count(OffenseDescription)"))
+pdBurg = burg.toPandas()
+pdBurg
+
+
+# In[18]:
+
+
+top5Burg = pdBurg[0:6]
+top5Burg
+fig = plt.figure()
+ax = fig.add_axes([0,0,1,1])
+ax.bar(top5Burg['Street'],top5Burg['count(OffenseDescription)'], width = .1)
+plt.show()
+
+
+# In[20]:
+
+
+df6 = nonNullDf2.where(f.col("Shooting") == "1")
+df6 = df6.where(f.col("Street") == "ANNUNCIATION RD")
+df6.show()
+
+
+# In[ ]:
+
+
+
+
